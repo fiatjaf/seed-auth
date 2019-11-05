@@ -1,0 +1,49 @@
+<!-- @format -->
+
+<script>
+  import bech32 from 'bech32'
+  import {onMount} from 'svelte'
+  import {replace} from 'svelte-spa-router'
+  import {Buffer} from 'safe-buffer'
+
+  import * as toast from './toast'
+  import {parselnurl} from './helpers'
+
+  export let params = {}
+  var url = {}
+
+  onMount(() => {
+    try {
+      url = new URL(
+        Buffer.from(
+          bech32.fromWords(bech32.decode(parselnurl(params.lnurl), 1500).words)
+        ).toString()
+      )
+    } catch (e) {
+      toast.error(`Invalid lnurl <em>${params.lnurl}</em>: ${e}`)
+      replace('/')
+    }
+  })
+
+  var username
+  var password
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    let r = await window.fetch()
+  }
+</script>
+
+<style>
+  label {
+    display: block;
+  }
+</style>
+
+<div>
+  <form on:submit="{handleSubmit}">
+    <label>Username: <input bind:value="{username}"/></label>
+    <label>Password: <input bind:value="{password}"/></label>
+    <button>Login to <em>{url.hostname}</em></button>
+  </form>
+</div>

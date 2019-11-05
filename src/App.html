@@ -1,0 +1,21 @@
+<!-- @format -->
+
+<script>
+  import Router from 'svelte-spa-router'
+
+  import SeedAuth from './SeedAuth.html'
+  import Index from './Index.html'
+
+  const routes = {
+    '/': Index,
+    '/lnurl/:lnurl': SeedAuth
+  }
+</script>
+
+<style>
+  main {
+    margin: 83px auto;
+  }
+</style>
+
+<main><Router {routes} /></main>

@@ -1,0 +1,5 @@
+*.env
+*.swp
+*.swo
+node_modules
+static/*bundle*

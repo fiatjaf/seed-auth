@@ -1,0 +1,35 @@
+<!-- @format -->
+
+<script>
+  import {push} from 'svelte-spa-router'
+
+  var lnurl
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    push('/lnurl/' + lnurl)
+  }
+</script>
+
+<style>
+  input {
+    padding: 50px 5px;
+  }
+</style>
+
+<div class="center">
+  <p>
+    <b>SeedAuth</b> allows you to login on
+    <a
+      href="https://github.com/fiatjaf/awesome-lnurl#lnurl-auth"
+      target="_blank"
+      >lnurl-auth</a
+    >-enabled services using just a username and password &ndash; your key will
+    be deterministically generated from these.
+  </p>
+
+  <form on:submit="{handleSubmit}">
+    <input bind:value="{lnurl}" />
+    <button>Ok</button>
+  </form>
+</div>
