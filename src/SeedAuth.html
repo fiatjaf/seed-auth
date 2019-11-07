@@ -94,6 +94,9 @@
 </script>
 
 <style>
+  form {
+    margin-bottom: 20px;
+  }
   label {
     display: block;
     margin: 4px 0;
@@ -108,7 +111,7 @@
     background-color: var(--darkorange);
     color: white;
     padding: 2px 4px;
-    margin-top: 1px;
+    margin-top: -14px;
     white-space: pre-wrap;
     word-wrap: break-word;
   }
@@ -117,9 +120,11 @@
     transform: translate(-36px, 3px);
   }
   button {
-    padding: 4px 8px;
-    margin-top: -17px;
+    padding: 7px 12px;
+    margin-top: 6px;
     margin-bottom: 8px;
+    color: var(--darkblue);
+    font-size: 1rem;
   }
 </style>
 
@@ -128,17 +133,6 @@
   <section>
     Challenge from {url.host}:
     <pre>{url.searchParams.get('k1')}</pre>
-  </section>
-  <section>
-    Public Key:
-    <pre>{pkey16}</pre>
-  </section>
-  <section>
-    Signature:
-    <pre>
-      {#if sig.length > 100} {sig} {:else if pkey16} Couldn't produce signature
-      {/if}
-    </pre>
   </section>
   <form on:submit="{handleSubmit}">
     <label
@@ -163,5 +157,16 @@
       Login {#if url} to <em>{url.hostname}</em>{/if}
     </button>
   </form>
+  <section>
+    Public Key:
+    <pre>{pkey16}</pre>
+  </section>
+  <section>
+    Signature:
+    <pre>
+      {#if sig.length > 100} {sig} {:else if pkey16} Couldn't produce signature
+      {/if}
+    </pre>
+  </section>
   {/if}
 </div>
