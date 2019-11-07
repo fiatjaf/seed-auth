@@ -5,12 +5,16 @@
   import {onMount} from 'svelte'
   import {replace} from 'svelte-spa-router'
   import {Buffer} from 'safe-buffer'
+  import shajs from 'sha.js'
+  import debounce from 'debounce'
 
   import * as toast from './toast'
   import {parselnurl} from './helpers'
+  import createSecp256k1 from './secp256k1'
 
   export let params = {}
-  var url = {}
+  var url
+  var secp256k1
 
   onMount(() => {
     try {
@@ -19,31 +23,145 @@
           bech32.fromWords(bech32.decode(parselnurl(params.lnurl), 1500).words)
         ).toString()
       )
+      if (url.searchParams.get('tag') !== 'login') {
+        toast.error(
+          `lnurl <em>${url}</em> doesn't specify the <em>login</em> tag.`
+        )
+        replace('/')
+      }
     } catch (e) {
       toast.error(`Invalid lnurl <em>${params.lnurl}</em>: ${e}`)
       replace('/')
     }
   })
 
+  onMount(() => {
+    secp256k1 = createSecp256k1()
+  })
+
   var username
   var password
+  var passwordType = 'password'
+  var skey
+  var skey16 = ''
+  var pkey
+  var pkey16 = ''
+  var sig = ''
+
+  const generateKeyAndSign = debounce(() => {
+    let hash = shajs('sha256').update(`${username}:${password}`)
+    skey = hash.digest()
+    skey16 = hash.digest('hex')
+    pkey = secp256k1._privkeyToPubkey(skey)
+    pkey16 = secp256k1._serializePubkey(pkey).toString('hex')
+
+    let msg = Buffer.from(url.searchParams.get('k1'), 'hex')
+    sig = secp256k1._sign(msg, skey).toString('hex')
+    if (sig === 'false') {
+      generateKeyAndSign()
+    }
+  }, 1000)
 
   async function handleSubmit(e) {
     e.preventDefault()
-    let r = await window.fetch()
+
+    url.searchParams.set('sig', sig)
+    url.searchParams.set('key', pkey16)
+    url.searchParams.set('t', Date.now())
+
+    try {
+      let r = await window.fetch(url.toString())
+      let t = await r.text()
+      let resp = JSON.parse(t)
+      if (resp.status !== 'OK') {
+        toast.warning(`Login failed: <em>${resp.reason}</em>`)
+      } else {
+        toast.success('Login success!')
+        if (window.opener) {
+          window.opener.postMessage('success')
+          window.close()
+        }
+      }
+    } catch (e) {
+      toast.error(`Error calling <em>${url}</em>: ${e}`)
+    }
+  }
+
+  function togglePassword(e) {
+    e.preventDefault()
+    passwordType = passwordType === 'password' ? 'text' : 'password'
   }
 </script>
 
 <style>
   label {
     display: block;
+    margin: 4px 0;
+  }
+  section,
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    width: 100%;
+  }
+  pre {
+    background-color: var(--darkorange);
+    color: white;
+    padding: 2px 4px;
+    margin-top: 1px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  a.eye {
+    display: inline-block;
+    transform: translate(-36px, 3px);
+  }
+  button {
+    padding: 4px 8px;
+    margin-top: -17px;
+    margin-bottom: 8px;
   }
 </style>
 
-<div>
+<div class="center">
+  {#if !url} loading <em>{params.lnurl}</em> {:else}
+  <section>
+    Challenge from {url.host}:
+    <pre>{url.searchParams.get('k1')}</pre>
+  </section>
+  <section>
+    Public Key:
+    <pre>{pkey16}</pre>
+  </section>
+  <section>
+    Signature:
+    <pre>
+      {#if sig.length > 100} {sig} {:else if pkey16} Couldn't produce signature
+      {/if}
+    </pre>
+  </section>
   <form on:submit="{handleSubmit}">
-    <label>Username: <input bind:value="{username}"/></label>
-    <label>Password: <input bind:value="{password}"/></label>
-    <button>Login to <em>{url.hostname}</em></button>
+    <label
+      >Username: <input on:input="{generateKeyAndSign}" bind:value="{username}"
+    /></label>
+    <label
+      >Password: {#if passwordType === 'text'}
+      <input
+        type="text"
+        on:input="{generateKeyAndSign}"
+        bind:value="{password}"
+      />{:else}
+      <input
+        type="password"
+        on:input="{generateKeyAndSign}"
+        bind:value="{password}"
+      />
+      {/if}
+      <a href="#/" class="eye" on:click="{togglePassword}">&#128065;</a></label
+    >
+    <button disabled="{sig.length < 100}">
+      Login {#if url} to <em>{url.hostname}</em>{/if}
+    </button>
   </form>
+  {/if}
 </div>
