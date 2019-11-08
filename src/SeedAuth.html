@@ -29,6 +29,7 @@
         )
         replace('/')
       }
+      username = localStorage.getItem(`username:${url.host}`)
     } catch (err) {
       toast.error(`Invalid lnurl <em>${params.lnurl}</em>: ${err}`)
       replace('/')
@@ -39,7 +40,7 @@
     secp256k1 = createSecp256k1()
   })
 
-  var username = localStorage.getItem('username')
+  var username
   var password
   var passwordType = 'password'
   var skey
@@ -58,18 +59,18 @@
   var brokenCORS = false
 
   const generateKeyAndSign = debounce(() => {
-    // save username
-    localStorage.setItem('username', username)
-
     pkeyMismatch = false
 
-    let hash = shajs('sha256').update(`${username}:${password}`)
+    let hash = shajs('sha256').update(`${url.host}:${username}:${password}`)
     skey = hash.digest()
     skey16 = hash.digest('hex')
     pkey = secp256k1._privkeyToPubkey(skey)
     pkey16 = secp256k1._serializePubkey(pkey).toString('hex')
+    let lastStoredSuccessKey = localStorage.getItem(
+      `successpkey:${url.host}:${username}`
+    )
 
-    if (localStorage.getItem(`successpkey:${username}`) !== pkey16) {
+    if (lastStoredSuccessKey && lastStoredSuccessKey !== pkey16) {
       pkeyMismatch = true
     }
 
@@ -95,7 +96,8 @@
         toast.warning(`Login failed: <em>${resp.reason}</em>`)
       } else {
         toast.success('Login success!')
-        localStorage.setItem(`successpkey:${username}`, pkey16)
+        localStorage.setItem(`successpkey:${url.host}:${username}`, pkey16)
+        localStorage.setItem(`username:${url.host}`, username)
         if (window.opener) {
           window.opener.postMessage('success')
           window.close()
@@ -159,7 +161,7 @@
 <div class="center">
   {#if !url} loading <em>{params.lnurl}</em> {:else}
   <section>
-    Challenge from {url.host}:
+    Challenge from <em>{url.host}</em>:
     <pre>{url.searchParams.get('k1')}</pre>
   </section>
   <form
@@ -194,7 +196,8 @@
     </button>
   </form>
   <section>
-    Public Key{#if pkeyMismatch} &nbsp;<em class="mismatch"
+    Public Key for <em>{url.host}</em>{#if pkeyMismatch} &nbsp;<em
+      class="mismatch"
       >(not the last one you used)</em
     >{/if}:
     <pre>{pkey16}</pre>
