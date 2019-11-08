@@ -29,8 +29,8 @@
         )
         replace('/')
       }
-    } catch (e) {
-      toast.error(`Invalid lnurl <em>${params.lnurl}</em>: ${e}`)
+    } catch (err) {
+      toast.error(`Invalid lnurl <em>${params.lnurl}</em>: ${err}`)
       replace('/')
     }
   })
@@ -39,7 +39,7 @@
     secp256k1 = createSecp256k1()
   })
 
-  var username
+  var username = localStorage.getItem('username')
   var password
   var passwordType = 'password'
   var skey
@@ -48,12 +48,30 @@
   var pkey16 = ''
   var sig = ''
 
+  // it's true if we generate a key that isn't equal
+  // to the last successful one for this username
+  var pkeyMismatch = false
+
+  // it's true if we tried to make a request and failed
+  // (happens on Firefox depending on who knows what)
+  // the next request will be a simple form GET
+  var brokenCORS = false
+
   const generateKeyAndSign = debounce(() => {
+    // save username
+    localStorage.setItem('username', username)
+
+    pkeyMismatch = false
+
     let hash = shajs('sha256').update(`${username}:${password}`)
     skey = hash.digest()
     skey16 = hash.digest('hex')
     pkey = secp256k1._privkeyToPubkey(skey)
     pkey16 = secp256k1._serializePubkey(pkey).toString('hex')
+
+    if (localStorage.getItem(`successpkey:${username}`) !== pkey16) {
+      pkeyMismatch = true
+    }
 
     let msg = Buffer.from(url.searchParams.get('k1'), 'hex')
     sig = secp256k1._sign(msg, skey).toString('hex')
@@ -77,13 +95,19 @@
         toast.warning(`Login failed: <em>${resp.reason}</em>`)
       } else {
         toast.success('Login success!')
+        localStorage.setItem(`successpkey:${username}`, pkey16)
         if (window.opener) {
           window.opener.postMessage('success')
           window.close()
         }
       }
-    } catch (e) {
-      toast.error(`Error calling <em>${url}</em>: ${e}`)
+    } catch (err) {
+      if (err.message === 'NetworkError when attempting to fetch resource.') {
+        brokenCORS = true
+        return
+      }
+
+      toast.error(`Error calling <em>${url}</em>: ${err}`)
     }
   }
 
@@ -108,12 +132,16 @@
     width: 100%;
   }
   pre {
-    background-color: var(--darkorange);
+    background-color: var(--darkblue);
     color: white;
     padding: 2px 4px;
     margin-top: -14px;
     white-space: pre-wrap;
     word-wrap: break-word;
+  }
+  .mismatch {
+    background-color: var(--darkred);
+    color: white;
   }
   a.eye {
     display: inline-block;
@@ -134,7 +162,15 @@
     Challenge from {url.host}:
     <pre>{url.searchParams.get('k1')}</pre>
   </section>
-  <form on:submit="{handleSubmit}">
+  <form
+    on:submit="{brokenCORS ? null : handleSubmit}"
+    action="{url.origin + url.pathname}"
+    method="GET"
+  >
+    <input type="hidden" name="tag" value="tag" />
+    <input type="hidden" name="k1" value="{url.searchParams.get('k1')}" />
+    <input type="hidden" name="key" value="{pkey16}" />
+    <input type="hidden" name="sig" value="{sig}" />
     <label
       >Username: <input on:input="{generateKeyAndSign}" bind:value="{username}"
     /></label>
@@ -158,7 +194,9 @@
     </button>
   </form>
   <section>
-    Public Key:
+    Public Key{#if pkeyMismatch} &nbsp;<em class="mismatch"
+      >(not the last one you used)</em
+    >{/if}:
     <pre>{pkey16}</pre>
   </section>
   <section>

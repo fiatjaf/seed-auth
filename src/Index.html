@@ -12,6 +12,10 @@
 </script>
 
 <style>
+  b {
+    font-size: 1.1rem;
+    color: var(--darkorange);
+  }
   input {
     padding: 50px 5px;
   }
@@ -29,7 +33,7 @@
   </p>
 
   <form on:submit="{handleSubmit}">
-    <input bind:value="{lnurl}" />
+    <input bind:value="{lnurl}" placeholder="lnurl..." />
     <button>Ok</button>
   </form>
 </div>
