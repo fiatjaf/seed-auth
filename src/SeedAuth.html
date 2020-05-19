@@ -14,7 +14,7 @@
 
   export let params = {}
   var url
-  var ec
+  const ec = new elliptic.ec('secp256k1')
 
   onMount(() => {
     try {
@@ -36,16 +36,10 @@
     }
   })
 
-  onMount(() => {
-    var EC = elliptic.ec;
-    ec = new EC('secp256k1')
-  })
-
   var username
   var password
   var passwordType = 'password'
   var skey
-  var skey16 = ''
   var pkey
   var pkey16 = ''
   var sig = ''
@@ -63,10 +57,9 @@
     pkeyMismatch = false
 
     let hash = shajs('sha256').update(`${url.host}:${username}:${password}`)
-    skey = hash.digest()
-    skey16 = hash.digest('hex')
-    const point = ec.keyFromPrivate(skey16).getPublic()
-    pkey16 = Buffer.from(point.encode(null, false)).toString('hex')
+    const sk = ec.keyFromPrivate(hash.digest())
+    const pk = sk.getPublic()
+    pkey16 = pk.encode('hex')
     let lastStoredSuccessKey = localStorage.getItem(
       `successpkey:${url.host}:${username}`
     )
@@ -76,10 +69,7 @@
     }
 
     let msg = Buffer.from(url.searchParams.get('k1'), 'hex')
-    sig =  Buffer.from(ec.sign(msg, skey16).toDER()).toString('hex')
-    if (sig === 'false') {
-      generateKeyAndSign()
-    }
+    sig = Buffer.from(ec.sign(msg, sk).toDER()).toString('hex')
   }, 1000)
 
   async function handleSubmit(e) {
