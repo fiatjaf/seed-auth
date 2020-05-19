@@ -7,14 +7,14 @@
   import {Buffer} from 'safe-buffer'
   import shajs from 'sha.js'
   import debounce from 'debounce'
+  import elliptic from 'elliptic'
 
   import * as toast from './toast'
   import {parselnurl} from './helpers'
-  import createSecp256k1 from './secp256k1'
 
   export let params = {}
   var url
-  var secp256k1
+  var ec
 
   onMount(() => {
     try {
@@ -37,7 +37,8 @@
   })
 
   onMount(() => {
-    secp256k1 = createSecp256k1()
+    var EC = elliptic.ec;
+    ec = new EC('secp256k1')
   })
 
   var username
@@ -64,8 +65,8 @@
     let hash = shajs('sha256').update(`${url.host}:${username}:${password}`)
     skey = hash.digest()
     skey16 = hash.digest('hex')
-    pkey = secp256k1._privkeyToPubkey(skey)
-    pkey16 = secp256k1._serializePubkey(pkey).toString('hex')
+    const point = ec.keyFromPrivate(skey16).getPublic()
+    pkey16 = Buffer.from(point.encode(null, false)).toString('hex')
     let lastStoredSuccessKey = localStorage.getItem(
       `successpkey:${url.host}:${username}`
     )
@@ -75,7 +76,7 @@
     }
 
     let msg = Buffer.from(url.searchParams.get('k1'), 'hex')
-    sig = secp256k1._sign(msg, skey).toString('hex')
+    sig =  Buffer.from(ec.sign(msg, skey16).toDER()).toString('hex')
     if (sig === 'false') {
       generateKeyAndSign()
     }
