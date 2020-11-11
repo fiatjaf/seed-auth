@@ -69,7 +69,9 @@
     }
 
     let msg = Buffer.from(url.searchParams.get('k1'), 'hex')
-    sig = Buffer.from(ec.sign(msg, sk).toDER()).toString('hex')
+    sig = Buffer.from(ec.sign(msg, sk, {canonical: true}).toDER()).toString(
+      'hex'
+    )
   }, 1000)
 
   async function handleSubmit(e) {
