@@ -1,9 +1,9 @@
 /** @format */
 
-import json from 'rollup-plugin-json'
+import json from '@rollup/plugin-json'
 import svelte from 'rollup-plugin-svelte'
-import resolve from 'rollup-plugin-node-resolve'
-import commonjs from 'rollup-plugin-commonjs'
+import resolve from '@rollup/plugin-node-resolve'
+import commonjs from '@rollup/plugin-commonjs'
 import {terser} from 'rollup-plugin-terser'
 
 const production = !!process.env.PRODUCTION
@@ -25,7 +25,7 @@ export default {
       // we'll extract any component CSS out into
       // a separate file — better for performance
       css: css => {
-        css.write('static/bundle.css')
+        css.write('bundle.css')
       }
     }),
 
